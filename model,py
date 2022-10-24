@@ -1,0 +1,46 @@
+import pandas as pd
+import numpy as np
+import pickle
+from joblib import load, dump
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
+from sklearn.metrics import classification_report
+import warnings
+warnings.filterwarnings('always')
+
+
+df = pd.read_csv('diabetes_no-outlier.csv')
+
+X = df[['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 'Insulin','BMI', 'DiabetesPedigreeFunction', 'Age']]
+y = df[['Outcome']]
+std_cols = ['Glucose', 'BloodPressure', 'Insulin']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+X_train[std_cols] = MinMaxScaler().fit_transform(X_train[std_cols])
+X_test[std_cols] = MinMaxScaler().fit_transform(X_test[std_cols])
+
+xgb = XGBClassifier(booster='gblinear', eta=1, max_depth=5, n_estimators=70, random_state=1, use_label_encoder=False)
+xgb.fit(X_train, y_train.values.ravel())
+y_pred = xgb.predict(X_test)
+
+print("Classification Report : \n",classification_report(y_test, y_pred))
+
+filename = 'diabetes_model.pkl'
+filename2 = 'diabetes_model.sav'
+pickle.dump(xgb, open(filename, 'wb'))
+pickle.dump(xgb, open(filename2, 'wb'))
+
+# ==================================================================================================================================
+# Model with CatBoost
+cb = CatBoostClassifier(depth=6, iterations=20, learning_rate=0.0001, random_seed=2022, verbose=0)
+cb.fit(X_train, y_train.values.ravel())
+y_pred = cb.predict(X_test)
+
+filename = 'model_catboost.pkl'
+filename2 = 'model_catboost.sav'
+pickle.dump(cb, open(filename, 'wb'))
+pickle.dump(cb, open(filename2, 'wb'))
+
+# ==================================================================================================================================
